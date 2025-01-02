@@ -6,11 +6,12 @@ package winapi
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"syscall"
 	"time"
 	"unsafe"
 
-	so "github.com/iamacarpet/go-win64api/shared"
+	so "github.com/sthayduk/go-win64api/shared"
 )
 
 var (
@@ -128,16 +129,16 @@ type LOCALGROUP_MEMBERS_INFO_3 struct {
 // The only required fields are Username and Password.
 //
 // Fields:
-//	- Username		account username, limited to 20 characters.
-//	- Password 		account password
-//	- FullName		user's full name (default: none)
-//  - PrivLevel		account's prvilege level, must be one of the USER_PRIV_* constants
-//					(default: USER_PRIV_GUEST)
-// 	- HomeDir		If non-empty, the user's home directory is set to the specified
-//					path.
-//	- Comment		A comment to associate with the account (default: none)
-//	- ScriptPath 	If non-empty, the path to the user's logon script file, which can
-//					be a .CMD, .EXE, or .BAT file. (default: none)
+//   - Username		account username, limited to 20 characters.
+//   - Password 		account password
+//   - FullName		user's full name (default: none)
+//   - PrivLevel		account's prvilege level, must be one of the USER_PRIV_* constants
+//     (default: USER_PRIV_GUEST)
+//   - HomeDir		If non-empty, the user's home directory is set to the specified
+//     path.
+//   - Comment		A comment to associate with the account (default: none)
+//   - ScriptPath 	If non-empty, the path to the user's logon script file, which can
+//     be a .CMD, .EXE, or .BAT file. (default: none)
 type UserAddOptions struct {
 	// Required
 	Username string
@@ -374,8 +375,17 @@ func ListLocalUsers() ([]so.LocalUser, error) {
 
 // AddGroupMembership adds the user as a member of the specified group.
 func AddGroupMembership(username, groupname string) (bool, error) {
-	hn, _ := os.Hostname()
-	uPointer, err := syscall.UTF16PtrFromString(hn + `\` + username)
+
+	regex := regexp.MustCompile(`^([A-Z0-9][A-Z0-9-]{0,14})\\([A-Za-z0-9._-]{1,20})$`)
+
+	matches := regex.FindStringSubmatch(username)
+
+	if !matches {
+		hostname, _ := os.Hostname()
+		username = hostname + "\\" + username
+	}
+
+	uPointer, err := syscall.UTF16PtrFromString(username)
 	if err != nil {
 		return false, fmt.Errorf("Unable to encode username to UTF16")
 	}
@@ -402,8 +412,17 @@ func AddGroupMembership(username, groupname string) (bool, error) {
 
 // RemoveGroupMembership removes the user from the specified group.
 func RemoveGroupMembership(username, groupname string) (bool, error) {
-	hn, _ := os.Hostname()
-	uPointer, err := syscall.UTF16PtrFromString(hn + `\` + username)
+
+	regex := regexp.MustCompile(`^([A-Z0-9][A-Z0-9-]{0,14})\\([A-Za-z0-9._-]{1,20})$`)
+
+	matches := regex.FindStringSubmatch(username)
+
+	if !matches {
+		hostname, _ := os.Hostname()
+		username = hostname + "\\" + username
+	}
+
+	uPointer, err := syscall.UTF16PtrFromString(username)
 	if err != nil {
 		return false, fmt.Errorf("unable to encode username to UTF16")
 	}
